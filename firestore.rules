@@ -1,0 +1,75 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    // Collection: users
+    // Fields: id, name, email, role (SUPER_ADMIN, MECHANIC, GUEST), workshopName
+    //
+    // Collection: vehicles
+    // Fields: vin, make, model, year, plateNumber, lastOdometer
+    //
+    // Collection: repairs
+    // Fields: id, vehicleVin, mechanicId, odometerReading, repairNotes, category, createdAt
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isSuperAdmin() {
+      return isAuthenticated() && (
+        getUserData().role == 'SUPER_ADMIN' ||
+        (request.auth.token.email == "michaelwolastudio@gmail.com" && request.auth.token.email_verified == true)
+      );
+    }
+
+    function isMechanic() {
+      return isAuthenticated() && getUserData().role == 'MECHANIC';
+    }
+
+    function isGuest() {
+      return isAuthenticated() && getUserData().role == 'GUEST';
+    }
+
+    // Rules for Users
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isSuperAdmin();
+      allow delete: if isSuperAdmin();
+    }
+
+    // Rules for Vehicles
+    match /vehicles/{vin} {
+      allow read: if isAuthenticated();
+      allow create: if isMechanic() || isSuperAdmin();
+      allow update: if isMechanic() || isSuperAdmin();
+      allow delete: if isSuperAdmin();
+    }
+
+    // Rules for Repairs
+    match /repairs/{repairId} {
+      allow read: if isAuthenticated();
+      
+      allow create: if (isMechanic() || isSuperAdmin()) &&
+        // Anti-Tamper Logic: Odometer cannot be lower than previous log
+        // We check the vehicle's lastOdometer
+        (!('lastOdometer' in get(/databases/$(database)/documents/vehicles/$(request.resource.data.vehicleVin)).data) ||
+         request.resource.data.odometerReading >= get(/databases/$(database)/documents/vehicles/$(request.resource.data.vehicleVin)).data.lastOdometer) &&
+        // Audit Trail: Capture mechanicId
+        request.resource.data.mechanicId == request.auth.uid &&
+        request.resource.data.createdAt == request.time;
+
+      // Immutability: No update or delete
+      allow update: if false;
+      allow delete: if false;
+    }
+  }
+}

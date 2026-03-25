@@ -1,0 +1,60 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with role-based access control.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Firebase Auth UID" },
+        "name": { "type": "string", "description": "Full name" },
+        "email": { "type": "string", "format": "email", "description": "Email address" },
+        "role": { "type": "string", "enum": ["SUPER_ADMIN", "MECHANIC", "GUEST"], "description": "User role" },
+        "workshopName": { "type": "string", "description": "Workshop name (nullable for non-mechanics)" }
+      },
+      "required": ["id", "name", "email", "role"]
+    },
+    "Vehicle": {
+      "title": "Vehicle",
+      "description": "Vehicle information identified by VIN.",
+      "type": "object",
+      "properties": {
+        "vin": { "type": "string", "description": "17-digit Vehicle Identification Number" },
+        "make": { "type": "string", "description": "Vehicle make" },
+        "model": { "type": "string", "description": "Vehicle model" },
+        "year": { "type": "integer", "description": "Manufacturing year" },
+        "plateNumber": { "type": "string", "description": "License plate number" },
+        "lastOdometer": { "type": "integer", "description": "Last recorded odometer reading" }
+      },
+      "required": ["vin", "make", "model", "year", "plateNumber"]
+    },
+    "RepairLog": {
+      "title": "RepairLog",
+      "description": "Immutable repair record for a vehicle.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique repair ID" },
+        "vehicleVin": { "type": "string", "description": "Reference to Vehicle VIN" },
+        "mechanicId": { "type": "string", "description": "Reference to Mechanic UID" },
+        "odometerReading": { "type": "integer", "description": "Odometer reading at time of repair" },
+        "repairNotes": { "type": "string", "description": "Detailed notes about the repair" },
+        "category": { "type": "string", "description": "Service category (Engine, Brake, etc.)" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp of repair log creation" }
+      },
+      "required": ["id", "vehicleVin", "mechanicId", "odometerReading", "repairNotes", "category", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/vehicles/{vin}": {
+      "schema": "Vehicle",
+      "description": "Vehicle records"
+    },
+    "/repairs/{repairId}": {
+      "schema": "RepairLog",
+      "description": "Repair logs"
+    }
+  }
+}
